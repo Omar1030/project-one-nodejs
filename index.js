@@ -16,7 +16,7 @@ app.use(express.json());
 
 // ! Middleware
 app.use("/welcome", (_, res) => res.status(200).json({ Message: "Welcome to our website" }));
-app.use("/products", productRouter);
+app.use("/api/products", productRouter);
 app.use(errorHandler);
 
 // ! DataBase Connection
