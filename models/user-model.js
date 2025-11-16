@@ -1,5 +1,7 @@
 // ! Packages
 const mongoose = require("mongoose");
+const bcrypt = require("bcrypt");
+
 const Schema = mongoose.Schema;
 
 const userSchema = new Schema(
@@ -17,9 +19,28 @@ const userSchema = new Schema(
       required: [true, "Password of user is required"],
     },
     address: {
-      type: [Schema.Types.ObjectId],
+      type: [
+        {
+          city: {
+            type: String,
+            required: [true, "City is required"],
+          },
+          country: {
+            type: String,
+            required: [true, "Country is required"],
+          },
+        },
+      ],
       ref: "Address",
       required: [true, "Address of user is required"],
+    },
+    role: {
+      type: String,
+      required: [true, "Set your role!"],
+      enum: {
+        values: ["admin", "seller", "user"],
+        message: "{VALUE} is not supported as a role ",
+      },
     },
     wishlist: {
       type: Schema.Types.ObjectId,
@@ -39,6 +60,14 @@ const userSchema = new Schema(
   },
   { timestamps: true }
 );
+
+// ! Hash Password before saving in DB
+userSchema.pre("save", async function (next) {
+  if (this.isModified("password")) {
+    this.password = await bcrypt.hash(this.password, 10);
+  }
+  next();
+});
 
 const userModel = mongoose.model("user", userSchema);
 

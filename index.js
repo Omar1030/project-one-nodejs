@@ -8,6 +8,7 @@ const errorHandler = require("./middleware/err-middleware.js");
 
 // ! Routes
 const productRouter = require("./routes/products-route");
+const authRouter = require("./routes/auth-route.js");
 
 // ! App
 const app = express();
@@ -15,8 +16,9 @@ dotenv.config({ path: "./config/.env" });
 app.use(express.json());
 
 // ! Middleware
-app.use("/welcome", (_, res) => res.status(200).json({ Message: "Welcome to our website" }));
+app.use("/api/welcome", (_, res) => res.status(200).json({ Message: "Welcome to SHOP.CO" }));
 app.use("/api/products", productRouter);
+app.use("/api/auth", authRouter);
 app.use(errorHandler);
 
 // ! DataBase Connection
