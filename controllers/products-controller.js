@@ -1,10 +1,7 @@
-// ! Package
 const asyncHandler = require("express-async-handler");
 
-// ! Modules
 const productModel = require("../models/products-model.js");
 
-// ! Utils
 const AppError = require("../utils/AppError.js");
 
 // ! @desc    Get all products

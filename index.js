@@ -1,6 +1,7 @@
 // ! Packages
 const express = require("express");
 const dotenv = require("dotenv");
+const cookie_parser = require("cookie-parser");
 
 // ! Utils
 const connectDB = require("./utils/dbConnection.js");
@@ -14,6 +15,7 @@ const authRouter = require("./routes/auth-route.js");
 const app = express();
 dotenv.config({ path: "./config/.env" });
 app.use(express.json());
+app.use(cookie_parser());
 
 // ! Middleware
 app.use("/api/welcome", (_, res) => res.status(200).json({ Message: "Welcome to SHOP.CO" }));
