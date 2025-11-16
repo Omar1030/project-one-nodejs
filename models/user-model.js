@@ -54,9 +54,7 @@ const userSchema = new Schema(
       type: [Schema.Types.ObjectId],
       ref: "Order",
     },
-    refreshToken: {
-      type: [String],
-    },
+    refreshTokens: [{ deviceID: String, token: String }],
   },
   { timestamps: true }
 );
