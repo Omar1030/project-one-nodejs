@@ -5,7 +5,7 @@ const jwt = require("jsonwebtoken");
 const AppError = require("../utils/AppError.js");
 const userModel = require("../models/user-model.js");
 
-// ! @desc
+// ! @desc Register new user
 // ! @route /api/auth/register
 // ! @params { name, email, password, city, country, role }
 // ! @access { private }
@@ -19,7 +19,7 @@ const registerController = expressAsyncHandler(async (req, res, next) => {
   res.status(201).json({ "New User": newUser });
 });
 
-// ! @desc
+// ! @desc Loin
 // ! @route /api/auth/login
 // ! @params { email, password, deviceID }
 // ! @access { private }
@@ -45,7 +45,7 @@ const loginController = expressAsyncHandler(async (req, res, next) => {
   res.status(200).json({ user: user, accessToken: accessToken, refreshToken: refreshToken });
 });
 
-// ! @desc
+// ! @desc Logout
 // ! @route /api/auth/logout
 // ! @params { deviceID }
 // ! @token { refjwt }
@@ -56,7 +56,13 @@ const logoutController = expressAsyncHandler(async (req, res, next) => {
 
   const { refjwt } = req.cookies;
   if (!refjwt) return next(new AppError("Token is not found!", 400));
-  const decode = jwt.verify(refjwt, process.env.REFRESH_SECRET);
+
+  let decode;
+  try {
+    decode = jwt.verify(refjwt, process.env.REFRESH_SECRET);
+  } catch (err) {
+    return next(new AppError("Invalid Token!!!!!!!!!!!!"));
+  }
 
   const user = await userModel.findOne({ name: decode.name });
   if (!user) return next(new AppError("User is not exist!", 404));
@@ -64,10 +70,11 @@ const logoutController = expressAsyncHandler(async (req, res, next) => {
   user.refreshTokens = user.refreshTokens.filter((t) => t.deviceID !== deviceID);
   await user.save();
 
+  res.clearCookie("refjwt", { httpOnly: true, maxAge: 1000 * 24 * 50 * 50 * 50 });
   res.status(200).json({ success: "Logout" });
 });
 
-// ! @desc
+// ! @desc  Logout from all devices
 // ! @route /api/auth/logoutall
 // ! @token { refjwt }
 // ! @access { private }
@@ -85,4 +92,51 @@ const logoutAllController = expressAsyncHandler(async (req, res, next) => {
   res.status(200).json({ success: "Logout from all devices!" });
 });
 
-module.exports = { registerController, loginController, logoutController, logoutAllController };
+// ! @desc Refresh Token
+// ! @route /api/auth/refreshtoken
+// ! @token { refjwt }
+// ! @access { private }
+const refreshTokenController = expressAsyncHandler(async (req, res, next) => {
+  const { deviceID } = req.body;
+  if (!deviceID) return next(new AppError("ID of device is missing!", 400));
+
+  const { refjwt } = req.cookies;
+  if (!refjwt) return next(new AppError("Token is not found", 401));
+
+  let decode;
+  try {
+    decode = jwt.verify(refjwt, process.env.REFRESH_SECRET);
+  } catch (err) {
+    return next(new AppError("Invalid or expired token, Please login again!", 401));
+  }
+
+  const user = await userModel.findOne({ email: decode.email });
+  if (!user) return next(new AppError("User is not found!", 400));
+
+  const device = user.refreshTokens.find((ref) => ref.deviceID === deviceID);
+  if (!device) return next(new AppError("Unknown device try to get tokn!", 401));
+
+  console.log(device);
+
+  const checkToken = await bcrypt.compare(refjwt, device.token);
+  console.log("check", checkToken);
+  if (!checkToken) {
+    user.refreshTokens = [];
+    await user.save();
+    res.clearCookie("refjwt", { httpOnly: true, maxAge: 1000 * 24 * 50 * 50 * 50 });
+    return next(new AppError("Forbidden, Token reuse detection", 403));
+  }
+
+  console.log("After");
+  const accessToken = jwt.sign({ name: decode.name, role: decode.role, email: decode.email }, process.env.ACCESS_SECRET, { expiresIn: "1h" });
+  const refreshToken = jwt.sign({ name: decode.name, role: decode.role, email: decode.email }, process.env.REFRESH_SECRET, { expiresIn: "7d" });
+  const hashRefresh = await bcrypt.hash(refreshToken, 10);
+
+  device.token = hashRefresh;
+  await user.save();
+
+  res.cookie("refjwt", refreshToken, { httpOnly: true, maxAge: 1000 * 60 * 60 * 24 * 7 });
+  res.status(200).json({ accessToken, refreshToken });
+});
+
+module.exports = { registerController, loginController, logoutController, logoutAllController, refreshTokenController };
